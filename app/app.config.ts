@@ -91,7 +91,7 @@ const config: ExpoConfig = {
     forcesRTL: true,
     supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
     supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
-    eas: { projectId: process.env.EAS_PROJECT_ID },
+    eas: { projectId: '157f7e9f-0061-409b-be28-6d75d612e7b7' },
   },
 };
 
