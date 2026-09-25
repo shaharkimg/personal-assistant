@@ -1,0 +1,23 @@
+# Supabase CLI config (subset). `supabase start` for local dev, `supabase db push` / `functions deploy` for cloud.
+project_id = "personal-assistant"
+
+[api]
+max_rows = 1000
+
+[auth]
+site_url = "personalassistant://"
+additional_redirect_urls = ["personalassistant://auth-callback", "exp://*"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+
+[auth.email]
+enable_signup = true
+enable_confirmations = true
+otp_length = 6
+
+[storage]
+file_size_limit = "25MiB"
+
+[functions.proactive-scan]
+# Called by pg_cron with the x-cron-secret header, not by users.
+verify_jwt = false
