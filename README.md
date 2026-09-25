@@ -2,8 +2,6 @@
 
 אפליקציית מובייל (iOS + Android) שהיא עוזר אישי אמיתי: מכירה את ההקשר שלך, עובדת עם היומן, אנשי הקשר, המסמכים והמשימות שלך, זוכרת התחייבויות ועוקבת אחרי מה שמחכה לתשובה — ומבצעת פעולות רק דרך שכבת כלים מבוקרת, עם אישור לפני כל דבר חיצוני או בלתי הפיך.
 
-> הפרויקט יושב בתיקייה נפרדת בתוך הריפו `magalim-israel` ואינו תלוי בקוד של "מגלים". אפשר להעביר אותו לריפו משלו כמו שהוא.
-
 ## מה יש כאן
 
 | תחום | מה עובד |
@@ -55,7 +53,6 @@ personal-assistant/
 ### 1. Backend (Supabase)
 
 ```bash
-cd personal-assistant
 supabase link --project-ref <ref>
 supabase db push                                   # מריץ את המיגרציה
 cp supabase/.env.example supabase/.env             # למלא מפתחות
@@ -71,7 +68,7 @@ supabase functions deploy ai-chat transcribe ingest-document search-documents ex
 ### 2. אפליקציה
 
 ```bash
-cd personal-assistant/app
+cd app
 npm install
 cp .env.example .env                               # רק URL + anon key ציבוריים
 npx expo run:ios        # או run:android — Development Build
