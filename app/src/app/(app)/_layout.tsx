@@ -5,7 +5,8 @@ import * as Notifications from "expo-notifications";
 import * as QuickActions from "expo-quick-actions";
 import { useQuickActionRouting } from "expo-quick-actions/router";
 import { useShareIntentContext } from "expo-share-intent";
-import { registerForPush, setupChannels, urlFromResponse } from "@/services/notifications/NotificationService";
+import { handleNotificationAction, registerForPush, setupCategories, setupChannels, urlFromResponse } from "@/services/notifications/NotificationService";
+import { invalidateAll } from "@/state/queries";
 import { scheduleNotificationSync } from "@/services/notifications/sync";
 import { useTheme } from "@/theme/tokens";
 
@@ -20,6 +21,7 @@ export default function AppLayout() {
     void QuickActions.setItems([
       { id: "capture", title: "לכידה מהירה", icon: "compose", params: { href: "/capture" } },
       { id: "voice", title: "דבר עם העוזר", icon: "audio", params: { href: "/capture?voice=1" } },
+      { id: "meeting", title: "סכם פגישה", icon: "audio", params: { href: "/capture?meeting=1" } },
       { id: "scan", title: "סרוק מסמך", icon: "capturePhoto", params: { href: "/documents?scan=1" } },
       { id: "brief", title: "התקציר היומי", icon: "date", params: { href: "/brief" } },
     ]).catch(() => undefined);
@@ -30,20 +32,27 @@ export default function AppLayout() {
     if (hasShareIntent) router.push("/share");
   }, [hasShareIntent, router]);
 
-  // Notification taps deep-link into the relevant screen.
+  // Notification taps deep-link into the relevant screen; action buttons ("בוצע" / "דחה למחר") act directly.
   useEffect(() => {
-    const last = urlFromResponse(Notifications.getLastNotificationResponse());
-    if (last) router.push(last as never);
-    const sub = Notifications.addNotificationResponseReceivedListener((res) => {
+    const onResponse = async (res: Notifications.NotificationResponse | null) => {
+      if (!res) return;
+      if (await handleNotificationAction(res).catch(() => false)) {
+        invalidateAll();
+        scheduleNotificationSync(500);
+        return;
+      }
       const url = urlFromResponse(res);
       if (url) router.push(url as never);
-    });
+    };
+    void onResponse(Notifications.getLastNotificationResponse());
+    const sub = Notifications.addNotificationResponseReceivedListener((res) => void onResponse(res));
     return () => sub.remove();
   }, [router]);
 
   // Keep local notifications in sync with the latest data whenever the app comes forward.
   useEffect(() => {
     void setupChannels();
+    void setupCategories().catch(() => undefined);
     void registerForPush().catch(() => undefined);
     scheduleNotificationSync(500);
     const sub = AppState.addEventListener("change", (s) => s === "active" && scheduleNotificationSync(500));

@@ -4,6 +4,8 @@ import * as Device from "expo-device";
 import Constants from "expo-constants";
 import type { PlannedNotification } from "@/domain/proactive";
 import { registerPushToken } from "@/data/profile";
+import { completeTask, getTask, updateTask } from "@/data/tasks";
+import { addDays, atTime, toDateKey } from "@/domain/dates";
 
 const MANAGED = "pa-managed";
 // iOS keeps at most 64 pending local notifications per app.
@@ -28,6 +30,40 @@ export async function setupChannels() {
     name: "עדכונים מהעוזר",
     importance: Notifications.AndroidImportance.DEFAULT,
   });
+}
+
+const TASK_CATEGORY = "task";
+const ACTION_DONE = "done";
+const ACTION_TOMORROW = "tomorrow";
+
+/** "בוצע" / "דחה למחר" buttons on task reminders, so most reminders need no app visit. */
+export async function setupCategories() {
+  await Notifications.setNotificationCategoryAsync(TASK_CATEGORY, [
+    { identifier: ACTION_DONE, buttonTitle: "בוצע ✓", options: { opensAppToForeground: true } },
+    { identifier: ACTION_TOMORROW, buttonTitle: "דחה למחר", options: { opensAppToForeground: true } },
+  ]);
+}
+
+/**
+ * Handles a task action button. Returns true when the response was an action (so the caller
+ * shouldn't navigate). Safe to call twice for the same response: a completed task is skipped.
+ */
+export async function handleNotificationAction(res: Notifications.NotificationResponse): Promise<boolean> {
+  const action = res.actionIdentifier;
+  if (action !== ACTION_DONE && action !== ACTION_TOMORROW) return false;
+  const taskId = res.notification.request.content.data?.taskId;
+  await Notifications.dismissNotificationAsync(res.notification.request.identifier).catch(() => undefined);
+  if (typeof taskId !== "string") return true;
+  const task = await getTask(taskId);
+  if (!task || task.status === "completed") return true;
+  if (action === ACTION_DONE) {
+    await completeTask(taskId, "user");
+  } else {
+    const tomorrow = addDays(new Date(), 1);
+    const remindAt = task.remindAt ? atTime(tomorrow, task.dueTime ?? "09:00") : null;
+    await updateTask(taskId, { dueDate: toDateKey(tomorrow), remindAt: remindAt?.toISOString() ?? null }, "user");
+  }
+  return true;
 }
 
 export async function hasNotificationPermission(): Promise<boolean> {
@@ -60,7 +96,8 @@ export async function applyNotificationPlan(plan: PlannedNotification[]): Promis
       content: {
         title: n.title,
         body: n.body,
-        data: { [MANAGED]: true, url: n.url, kind: n.kind },
+        data: { [MANAGED]: true, url: n.url, kind: n.kind, ...(n.taskId ? { taskId: n.taskId } : {}) },
+        ...(n.taskId ? { categoryIdentifier: TASK_CATEGORY } : {}),
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DATE,

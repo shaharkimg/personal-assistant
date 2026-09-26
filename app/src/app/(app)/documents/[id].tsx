@@ -37,7 +37,7 @@ export default function DocumentDetail() {
           <SectionHeader title="שאל את העוזר" />
           <View style={{ flexDirection: "row", gap: space.sm, flexWrap: "wrap" }}>
             <Button compact icon="sparkles-outline" title="סכם" onPress={() => ask("סכם לי את המסמך")} />
-            <Button compact variant="secondary" title="מועדים ותאריכים" onPress={() => ask("אילו תאריכים ומועדים חשובים יש במסמך? הצע ליצור תזכורות")} />
+            <Button compact variant="secondary" title="חלץ מועדים" onPress={() => ask("מצא את כל המועדים והתאריכים החשובים במסמך וצור להם תזכורות")} />
             <Button compact variant="secondary" title="צור משימות" onPress={() => ask("צור משימות לפי מה שנדרש במסמך")} />
           </View>
           <SectionHeader title="תחילת הטקסט" />

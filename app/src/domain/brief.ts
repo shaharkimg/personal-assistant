@@ -237,6 +237,27 @@ export function dailyBriefToText(b: DailyBrief): string {
   return lines.join("\n");
 }
 
+/**
+ * One-glance body for the morning-brief notification, from real records only:
+ * "3 פגישות, הראשונה 09:30 ישיבת צוות · 2 משימות: דוח רבעוני, להתקשר לדני · 1 ממתין לתשובה".
+ */
+export function morningBriefBody(input: Omit<BriefInput, "now">, day: Date): string {
+  const parts: string[] = [];
+  const meetings = eventsOn(input.events, day).filter((e) => !e.allDay && e.busy);
+  if (meetings.length) {
+    const first = meetings[0];
+    parts.push(`${meetings.length === 1 ? "פגישה אחת" : `${meetings.length} פגישות`}, ${meetings.length === 1 ? "" : "הראשונה "}${formatTime(first.start)} ${first.title}`);
+  }
+  const tasks = tasksForToday(input.tasks, day);
+  if (tasks.length) {
+    const top = tasks.slice(0, 2).map((t) => t.title).join(", ");
+    parts.push(`${tasks.length === 1 ? "משימה אחת" : `${tasks.length} משימות`}: ${top}${tasks.length > 2 ? "…" : ""}`);
+  }
+  const waiting = overdueWaiting(input.waiting, day).length;
+  if (waiting) parts.push(waiting === 1 ? "דבר אחד ממתין לתשובה" : `${waiting} ממתינים לתשובה`);
+  return parts.length ? parts.join(" · ") : "יום פנוי — אין פגישות או משימות דחופות.";
+}
+
 export interface EveningReview {
   date: string;
   completed: number;
