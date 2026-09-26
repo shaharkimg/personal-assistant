@@ -61,7 +61,7 @@ const config: ExpoConfig = {
       {
         cameraPermission: "המצלמה משמשת לצילום מסמכים, קבלות ומכתבים עבור העוזר.",
         photosPermission: "גישה לתמונות שתבחר כדי לצרף אותן לעוזר.",
-        microphonePermission: false,
+        // Not `false`: on Android that adds RECORD_AUDIO to blocked permissions and breaks voice input.
       },
     ],
     ["react-native-document-scanner-plugin", { cameraPermission: "המצלמה משמשת לסריקת מסמכים." }],
@@ -89,8 +89,11 @@ const config: ExpoConfig = {
   extra: {
     supportsRTL: true,
     forcesRTL: true,
-    supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
-    supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+    // Public project values (safe to ship; RLS protects the data). Env vars override them.
+    supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL ?? "https://ihpaytmhzyacfejfuoiy.supabase.co",
+    supabaseAnonKey:
+      process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ??
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlocGF5dG1oenlhY2ZlamZ1b2l5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzNzA3MTMsImV4cCI6MjEwNTk0NjcxM30.umz_xbFE73bp49z2eSSJZDQin-c7ztrVofod5RgU9yI",
     eas: { projectId: '157f7e9f-0061-409b-be28-6d75d612e7b7' },
   },
 };

@@ -1,5 +1,6 @@
 // Text extraction for the ingestion pipeline: File -> plain text.
-import { extractText as extractPdfText, getDocumentProxy } from "npm:unpdf@1";
+import { getDocumentProxy } from "npm:unpdf@1";
+import { layoutPageText, type PdfTextItem } from "./pdf_layout.ts";
 import mammoth from "npm:mammoth@1";
 import { Buffer } from "node:buffer";
 import * as XLSX from "npm:xlsx@0.18.5";
@@ -25,8 +26,13 @@ export async function extractText(bytes: Uint8Array, mimeType: string, ai: AIPro
 
   if (mime === "application/pdf") {
     const pdf = await getDocumentProxy(bytes);
-    const { text, totalPages } = await extractPdfText(pdf, { mergePages: false });
-    const joined = (text as string[]).map((t, i) => `[עמוד ${i + 1}]\n${t}`).join("\n\n");
+    const totalPages = pdf.numPages;
+    const text: string[] = [];
+    for (let p = 1; p <= totalPages; p++) {
+      const content = await (await pdf.getPage(p)).getTextContent();
+      text.push(layoutPageText(content.items as PdfTextItem[]));
+    }
+    const joined = text.map((t, i) => `[עמוד ${i + 1}]\n${t}`).join("\n\n");
     // Scanned PDFs have (almost) no text layer — fall back to the model's document vision.
     if (joined.replace(/\[עמוד \d+\]|\s/g, "").length > 40 * totalPages) {
       return { text: joined, pageCount: totalPages, method: "pdf-text" };
