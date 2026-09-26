@@ -1,39 +1,45 @@
 import React, { useState } from "react";
 import { KeyboardAvoidingView, Platform, TextInput, View } from "react-native";
 import { supabase } from "@/lib/supabase";
-import { Button, Screen, T } from "@/components/ui";
+import { Button, Card, Screen, T } from "@/components/ui";
 import { radius, space, type, useTheme } from "@/theme/tokens";
 
-/** Passwordless sign-in with a one-time code sent by email. */
+/** Must be listed under Authentication → URL Configuration → Redirect URLs in Supabase. */
+const AUTH_REDIRECT = "personalassistant://auth-callback";
+
+/**
+ * Passwordless sign-in with an email link. Tapping the link on this phone opens the app at
+ * /auth-callback, which completes the sign-in. Works with Supabase's default email template.
+ */
 export default function SignIn() {
   const c = useTheme();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
-  const [code, setCode] = useState("");
-  const [step, setStep] = useState<"email" | "code">("email");
+  const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const input = [type.body, { color: c.text, backgroundColor: c.surface, borderColor: c.border, borderWidth: 1, borderRadius: radius.md, padding: space.md, textAlign: "right" as const }];
 
-  const sendCode = async () => {
+  const sendLink = async () => {
     setBusy(true);
     setError(null);
     const { error: e } = await supabase.auth.signInWithOtp({
       email: email.trim().toLowerCase(),
-      options: { shouldCreateUser: true, data: name.trim() ? { display_name: name.trim() } : undefined },
+      options: {
+        shouldCreateUser: true,
+        emailRedirectTo: AUTH_REDIRECT,
+        data: name.trim() ? { display_name: name.trim() } : undefined,
+      },
     });
     setBusy(false);
-    if (e) setError("לא הצלחנו לשלוח קוד. בדוק את הכתובת ונסה שוב.");
-    else setStep("code");
-  };
-
-  const verify = async () => {
-    setBusy(true);
-    setError(null);
-    const { error: e } = await supabase.auth.verifyOtp({ email: email.trim().toLowerCase(), token: code.trim(), type: "email" });
-    setBusy(false);
-    if (e) setError("הקוד שגוי או שפג תוקפו.");
+    if (e) {
+      setError(
+        e.status === 429
+          ? "נשלחו יותר מדי מיילים בזמן קצר. חכה כמה דקות ונסה שוב."
+          : "לא הצלחנו לשלוח את הקישור. בדוק את הכתובת ונסה שוב.",
+      );
+    } else setSent(true);
   };
 
   return (
@@ -45,7 +51,7 @@ export default function SignIn() {
             משימות, יומן, מעקבים ומסמכים — במקום אחד, עם עוזר שמכיר את ההקשר שלך.
           </T>
         </View>
-        {step === "email" ? (
+        {!sent ? (
           <>
             <TextInput style={input} placeholder="איך לקרוא לך?" placeholderTextColor={c.textTertiary} value={name} onChangeText={setName} autoComplete="given-name" />
             <TextInput
@@ -59,27 +65,20 @@ export default function SignIn() {
               autoComplete="email"
               textContentType="emailAddress"
             />
-            <Button title="שלח קוד כניסה" onPress={sendCode} loading={busy} disabled={!/^\S+@\S+\.\S+$/.test(email)} />
+            <Button title="שלח קישור כניסה" onPress={sendLink} loading={busy} disabled={!/^\S+@\S+\.\S+$/.test(email)} />
           </>
         ) : (
           <>
-            <T variant="body" tone="secondary">
-              שלחנו קוד בן 6 ספרות אל {email}
-            </T>
-            <TextInput
-              style={[input, { letterSpacing: 8, textAlign: "center", fontSize: 24 }]}
-              placeholder="000000"
-              placeholderTextColor={c.textTertiary}
-              value={code}
-              onChangeText={setCode}
-              keyboardType="number-pad"
-              maxLength={6}
-              autoComplete="one-time-code"
-              textContentType="oneTimeCode"
-              autoFocus
-            />
-            <Button title="כניסה" onPress={verify} loading={busy} disabled={code.length < 6} />
-            <Button title="שינוי כתובת" variant="ghost" onPress={() => setStep("email")} />
+            <Card tone="accent" style={{ gap: space.sm }}>
+              <T variant="heading">בדוק את המייל</T>
+              <T variant="body">שלחנו קישור כניסה אל {email}.</T>
+              <T variant="body">פתח את המייל <T variant="body" style={{ fontWeight: "700" }}>בטלפון הזה</T> ולחץ על {"\"Sign in\""} — האפליקציה תיפתח ותכניס אותך.</T>
+              <T variant="caption" tone="secondary">
+                לא הגיע? בדוק בתיקיית הספאם. הקישור תקף לזמן קצר ולשימוש אחד.
+              </T>
+            </Card>
+            <Button title="שלח שוב" variant="secondary" onPress={sendLink} loading={busy} />
+            <Button title="שינוי כתובת" variant="ghost" onPress={() => setSent(false)} />
           </>
         )}
         {error ? (

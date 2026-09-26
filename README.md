@@ -66,7 +66,7 @@ supabase functions deploy ai-chat transcribe ingest-document search-documents ex
 - ספק ה-AI נבחר ב-`AI_PROVIDER` (`anthropic` / `openai`) ו-`AI_MODEL`. ברירת המחדל: Anthropic `claude-opus-5` עם adaptive thinking ו-refusal fallback בצד השרת (`AI_REFUSAL_FALLBACK=false` מכבה).
 - Embeddings ותמלול: כל endpoint תואם OpenAI (`EMBEDDINGS_BASE_URL`, `TRANSCRIPTION_BASE_URL`). בלי מפתח embeddings החיפוש עובר ל-full-text בלבד.
 - התראות שרת כשהאפליקציה סגורה: הרץ את `supabase/sql/schedule_proactive_scan.sql` (דורש pg_cron + pg_net).
-- Auth: Email OTP (קוד בן 6 ספרות). ב-Dashboard → Auth → Email Templates הוסף `{{ .Token }}` לתבנית.
+- Auth: קישור כניסה במייל (עובד עם תבנית ברירת המחדל). ב-Dashboard → Authentication → URL Configuration → Redirect URLs הוסף `personalassistant://auth-callback`.
 
 ### 2. אפליקציה
 
