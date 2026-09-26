@@ -10,6 +10,7 @@ import { projectTools } from "./projects";
 import { memoryTools } from "./memory";
 import { inboxTools } from "./inbox";
 import { workflowTools } from "./workflows";
+import { emailTools } from "./email";
 
 // Deterministic order keeps the tool block byte-stable for prompt caching.
 export const allTools: ToolSpec[] = [
@@ -23,6 +24,7 @@ export const allTools: ToolSpec[] = [
   ...memoryTools,
   ...inboxTools,
   ...workflowTools,
+  ...emailTools,
 ] as ToolSpec[];
 
 export const toolRegistry = new ToolRegistry(allTools);

@@ -25,6 +25,7 @@
 | **מועדים ממסמכים** | "חלץ מועדים" במסך מסמך (או בצ'אט): העוזר קורא את המסמך ומציע בכרטיס אחד את כל המועדים, עם ציטוט המקור ותזכורת 3 ימים לפני |
 | **סיכום פגישה** | 5 דקות אחרי פגישה (או "סכם פגישה" בלחיצה ארוכה על האייקון): מקליטים דקה → הערת סיכום, משימות ומעקבים באישור אחד, והצעה לטיוטת follow-up |
 | **התראות פעולה** | תקציר הבוקר מציג את היום בפועל בהתראה עצמה; תזכורות עם כפתורי "בוצע" / "דחה למחר" |
+| **Gmail** | חיפוש וקריאה ("תעבור על המיילים מהיומיים האחרונים"), מציאת כתובת לפי שם מתוך היסטוריית המייל, שליחה ישירה מה-Gmail, ו**הזמנות לפגישות** (`scheduleMeeting`): המוזמנים מקבלים הזמנה אמיתית עם כן/לא/אולי והפגישה נכנסת ליומן. כל שליחה באישור |
 | **Activity Log** | כל פעולה משמעותית נרשמת (מי, מה, מתי) — append-only |
 | **פרטיות ואבטחה** | ראה [docs/SECURITY.md](docs/SECURITY.md) |
 
@@ -60,11 +61,12 @@ supabase link --project-ref <ref>
 supabase db push                                   # מריץ את המיגרציה
 cp supabase/.env.example supabase/.env             # למלא מפתחות
 supabase secrets set --env-file supabase/.env
-supabase functions deploy ai-chat transcribe ingest-document search-documents export-data delete-account proactive-scan
+supabase functions deploy ai-chat transcribe ingest-document search-documents export-data delete-account proactive-scan mail
 ```
 
 - ספק ה-AI נבחר ב-`AI_PROVIDER` (`anthropic` / `openai`) ו-`AI_MODEL`. ברירת המחדל: Anthropic `claude-opus-5` עם adaptive thinking ו-refusal fallback בצד השרת (`AI_REFUSAL_FALLBACK=false` מכבה).
 - Embeddings ותמלול: כל endpoint תואם OpenAI (`EMBEDDINGS_BASE_URL`, `TRANSCRIPTION_BASE_URL`). בלי מפתח embeddings החיפוש עובר ל-full-text בלבד.
+- Gmail (אופציונלי): צור "סיסמת אפליקציה" ב-myaccount.google.com/apppasswords (דורש אימות דו-שלבי), ואז `supabase secrets set GMAIL_ADDRESS=... GMAIL_APP_PASSWORD=...` ו-`supabase functions deploy mail`. רק המשתמש שנכנס לאפליקציה עם אותה כתובת (או `MAIL_OWNER_EMAIL`) יכול להשתמש בתיבה. IMAP/SMTP על פורטים 993/465; הקריאה לא מסמנת מיילים כנקראו.
 - התראות שרת כשהאפליקציה סגורה: הרץ את `supabase/sql/schedule_proactive_scan.sql` (דורש pg_cron + pg_net).
 - Auth: קישור כניסה במייל (עובד עם תבנית ברירת המחדל). ב-Dashboard → Authentication → URL Configuration → Redirect URLs הוסף `personalassistant://auth-callback`.
 

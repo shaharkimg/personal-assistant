@@ -7,6 +7,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 export interface AuthContext {
   userId: string;
+  email: string | null;
   /** Client bound to the caller's JWT: every query is subject to RLS. */
   db: SupabaseClient;
 }
@@ -21,7 +22,7 @@ export async function requireUser(req: Request): Promise<AuthContext> {
   });
   const { data, error } = await db.auth.getUser(authHeader.slice("Bearer ".length));
   if (error || !data.user) throw new HttpError(401, "invalid token", "unauthorized");
-  return { userId: data.user.id, db };
+  return { userId: data.user.id, email: data.user.email?.toLowerCase() ?? null, db };
 }
 
 /** Service-role client. Use only for operations RLS cannot express (usage metering, account deletion, cron). */
