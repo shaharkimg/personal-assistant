@@ -1,7 +1,7 @@
 // Plans local notifications from real state, honoring the user's proactivity level and quiet hours.
 import type { CalendarEvent, Proactivity, Task, WaitingFor } from "./types";
-import { addDays, addMinutes, atTime, combineDateTime, timeToMinutes, toDateKey } from "./dates";
-import { overdueWaiting, tasksForToday } from "./brief";
+import { addDays, addMinutes, atTime, combineDateTime, minutesBetween, timeToMinutes, toDateKey } from "./dates";
+import { morningBriefBody, overdueWaiting, tasksForToday } from "./brief";
 import { gapBeforeNextEvent } from "./availability";
 
 export interface PlannedNotification {
@@ -12,7 +12,9 @@ export interface PlannedNotification {
   body: string;
   /** Deep link opened when tapped. */
   url: string;
-  kind: "reminder" | "meeting" | "task_nudge" | "waiting" | "free_time" | "brief" | "review";
+  kind: "reminder" | "meeting" | "meeting_summary" | "task_nudge" | "waiting" | "free_time" | "brief" | "review";
+  /** Set on task notifications so they can offer "done" / "tomorrow" actions. */
+  taskId?: string;
 }
 
 export interface PlanSettings {
@@ -62,7 +64,7 @@ export function planNotifications(input: PlanInput, horizonHours = 36): PlannedN
   // Explicit reminders are always delivered — the user asked for them (and they bypass quiet hours).
   for (const t of input.tasks) {
     if (t.status === "completed" || !t.remindAt) continue;
-    push({ id: `rem:${t.id}`, at: new Date(t.remindAt), title: "תזכורת", body: t.title, url: `/tasks/${t.id}`, kind: "reminder" }, false);
+    push({ id: `rem:${t.id}`, at: new Date(t.remindAt), title: "תזכורת", body: t.title, url: `/tasks/${t.id}`, kind: "reminder", taskId: t.id }, false);
   }
   if (level === 0) return out;
 
@@ -81,7 +83,14 @@ export function planNotifications(input: PlanInput, horizonHours = 36): PlannedN
 
   if (settings.morningBriefTime) {
     for (const day of [now, addDays(now, 1)]) {
-      push({ id: `brief:${toDateKey(day)}`, at: atTime(day, settings.morningBriefTime), title: "בוקר טוב ☀️", body: "התקציר היומי שלך מוכן.", url: "/brief", kind: "brief" });
+      push({
+        id: `brief:${toDateKey(day)}`,
+        at: atTime(day, settings.morningBriefTime),
+        title: "בוקר טוב ☀️",
+        body: morningBriefBody(input, atTime(day, settings.morningBriefTime)),
+        url: "/brief",
+        kind: "brief",
+      });
     }
   }
   if (level < 2) return out;
@@ -89,7 +98,20 @@ export function planNotifications(input: PlanInput, horizonHours = 36): PlannedN
   // Nudge for tasks due today that aren't done, late afternoon.
   for (const t of tasksForToday(input.tasks, now).filter((t) => t.priority === "high" || t.priority === "urgent").slice(0, 3)) {
     const at = t.dueDate && t.dueTime ? addMinutes(combineDateTime(t.dueDate, t.dueTime), -60) : atTime(now, "16:00");
-    push({ id: `nudge:${t.id}`, at, title: "עדיין פתוח", body: `המשימה "${t.title}" עדיין לא הושלמה.`, url: `/tasks/${t.id}`, kind: "task_nudge" });
+    push({ id: `nudge:${t.id}`, at, title: "עדיין פתוח", body: `המשימה "${t.title}" עדיין לא הושלמה.`, url: `/tasks/${t.id}`, kind: "task_nudge", taskId: t.id });
+  }
+
+  // Right after a meeting ends: offer a one-minute voice summary (tasks, follow-ups, notes).
+  for (const e of input.events) {
+    if (e.allDay || !e.busy || minutesBetween(e.start, e.end) < 20) continue;
+    push({
+      id: `msum:${e.id}:${e.start.getTime()}`,
+      at: addMinutes(e.end, 5),
+      title: "לסכם את הפגישה?",
+      body: `"${e.title}" הסתיימה. דקה של הקלטה ואני ארשום סיכום, משימות ומעקבים.`,
+      url: `/capture?meeting=${encodeURIComponent(e.title)}`,
+      kind: "meeting_summary",
+    });
   }
 
   for (const w of overdueWaiting(input.waiting, addDays(now, 1))) {

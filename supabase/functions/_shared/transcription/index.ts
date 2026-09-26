@@ -1,3 +1,4 @@
+import { HttpError } from "../http.ts";
 import OpenAI, { toFile } from "npm:openai@7";
 import type { TranscriptionProvider } from "../ai/types.ts";
 
@@ -28,7 +29,7 @@ class OpenAICompatibleTranscription implements TranscriptionProvider {
 
 export function getTranscriptionProvider(): TranscriptionProvider {
   const key = Deno.env.get("TRANSCRIPTION_API_KEY") ?? Deno.env.get("OPENAI_API_KEY");
-  if (!key) throw new Error("missing secret TRANSCRIPTION_API_KEY");
+  if (!key) throw new HttpError(503, "missing secret TRANSCRIPTION_API_KEY", "transcription_not_configured");
   return new OpenAICompatibleTranscription(
     key,
     Deno.env.get("TRANSCRIPTION_MODEL") ?? "gpt-4o-transcribe",

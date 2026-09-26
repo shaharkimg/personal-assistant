@@ -3,6 +3,9 @@ import { defineTool, ToolError } from "../types";
 import { contactsService } from "@/services/contacts/ContactsService";
 import { messagingService } from "@/services/messaging/MessagingService";
 import { upsertPerson } from "@/data/people";
+import { getProfile } from "@/data/profile";
+import { mailErrorMessage, mailService } from "@/services/mail/MailService";
+import { FunctionError } from "@/lib/supabase";
 
 export const contactTools = [
   defineTool({
@@ -66,7 +69,9 @@ export const contactTools = [
     name: "sendEmail",
     label: "מכין אימייל",
     doneLabel: "אימייל הוכן",
-    description: "Compose an email on the user's behalf. ALWAYS requires confirmation with the full text shown.",
+    description:
+      "Send an email on the user's behalf. Sent directly from their Gmail when it's connected, otherwise the phone's email app opens pre-filled. " +
+      "ALWAYS requires confirmation with the full text shown. For meeting invitations use scheduleMeeting.",
     schema: z.object({
       to: z.array(z.string().email()).min(1).max(10),
       subject: z.string().min(1).max(200),
@@ -82,6 +87,14 @@ export const contactTools = [
     }),
     async run(i) {
       if (!i.to.length) throw new ToolError("no recipients");
+      try {
+        const profile = await getProfile().catch(() => null);
+        await mailService.send({ to: i.to.map((email) => ({ email })), subject: i.subject, text: i.body, fromName: profile?.displayName ?? null });
+        return { sent: true, via: "gmail" };
+      } catch (e) {
+        const code = e instanceof FunctionError ? e.code : null;
+        if (code !== "mail_not_configured" && code !== "mail_forbidden") throw new ToolError(mailErrorMessage(e));
+      }
       await messagingService.sendEmail(i.to, i.subject, i.body, "assistant");
       return { handedToSystemComposer: true };
     },

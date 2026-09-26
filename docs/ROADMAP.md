@@ -8,7 +8,7 @@
 
 ## אינטגרציות
 - **Google Calendar / Outlook ישירות** — `GoogleCalendarProvider` / `OutlookCalendarProvider` מוכנים כ-interface; התוכנית (OAuth PKCE, refresh token מוצפן ב-Vault, `calendar-proxy`) מתועדת ב-`RemoteCalendarProviders.ts`.
-- **אימייל** (Gmail / Microsoft Graph, read-only בהתחלה) — כדי ש"אימייל אחד שכדאי לחזור אליו" יגיע ממקור אמיתי. יוזן ל-`WaitingFor` ולתקציר.
+- **אימייל**: Gmail מחובר (IMAP/SMTP + סיסמת אפליקציה). הבא: Outlook דרך Microsoft Graph, ומיילים שממתינים לתשובה בתקציר הבוקר.
 - **WhatsApp Business / SMS ישיר** — כרגע נפתח composer של המערכת (המשתמש לוחץ שלח).
 
 ## מוצר

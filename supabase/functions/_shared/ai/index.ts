@@ -1,12 +1,13 @@
 import { AnthropicProvider } from "./anthropic.ts";
 import { OpenAIProvider } from "./openai.ts";
 import type { AIProvider } from "./types.ts";
+import { HttpError } from "../http.ts";
 
 export * from "./types.ts";
 
 function required(name: string): string {
   const v = Deno.env.get(name);
-  if (!v) throw new Error(`missing secret ${name}`);
+  if (!v) throw new HttpError(503, `missing secret ${name}`, "ai_not_configured");
   return v;
 }
 
