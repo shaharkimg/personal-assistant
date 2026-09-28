@@ -37,9 +37,16 @@ Deno.serve(handler(async (req) => {
     const fullText = texts.join("\n\n").slice(0, MAX_CHARS);
     const chunks = chunkText(fullText);
 
+    // Embeddings are an enhancement: if the provider fails (no key credit, outage) the document is
+    // still indexed for full-text search instead of failing the whole upload.
     const embedder = getEmbeddingProvider();
     const embeddings = embedder
-      ? await embedder.embed(chunks.map((c) => (c.heading ? `${c.heading}\n${c.content}` : c.content)), "document")
+      ? await embedder
+        .embed(chunks.map((c) => (c.heading ? `${c.heading}\n${c.content}` : c.content)), "document")
+        .catch((e) => {
+          console.error("embeddings failed; indexing for full-text only", e);
+          return null;
+        })
       : null;
 
     await db.from("document_chunks").delete().eq("document_id", documentId);
