@@ -25,7 +25,8 @@ function useAuthGate(session: Session | null | undefined) {
   const router = useRouter();
   useEffect(() => {
     if (session === undefined || !isConfigured) return;
-    const inAuth = segments[0] === "sign-in";
+    // auth-callback must stay reachable while signed out: it is where the sign-in link lands.
+    const inAuth = segments[0] === "sign-in" || segments[0] === "auth-callback";
     if (!session && !inAuth) router.replace("/sign-in");
     else if (session && inAuth) router.replace("/");
   }, [session, segments, router]);

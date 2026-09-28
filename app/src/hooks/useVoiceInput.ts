@@ -41,9 +41,15 @@ export function useVoiceInput(onTranscript: (text: string) => void) {
       setState("idle");
       if (text) onTranscript(text);
       else setError("לא זוהה דיבור");
-    } catch {
+    } catch (e) {
       setState("error");
-      setError("התמלול נכשל. נסה שוב או הקלד.");
+      const err = e as { code?: string; message?: string };
+      console.log("Voice transcription error:", err);
+      setError(
+        err.code === "transcription_not_configured"
+          ? "זיהוי דיבור לא מוגדר בשרת (חסר מפתח OpenAI). אפשר להקליד."
+          : "התמלול נכשל. נסה שוב או הקלד.",
+      );
     }
   }, [recorder, onTranscript]);
 

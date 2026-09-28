@@ -177,7 +177,13 @@ export class AssistantEngine {
       } catch (e) {
         const code = (e as { code?: string }).code;
         const text =
-          code === "rate_limited" ? "הגעת למגבלת השימוש היומית. נסה שוב מחר." : "לא הצלחתי להתחבר לעוזר כרגע. בדוק את החיבור ונסה שוב.";
+          code === "rate_limited"
+            ? "הגעת למגבלת השימוש היומית. נסה שוב מחר."
+            : code === "ai_not_configured"
+              ? "העוזר עוד לא מוגדר בשרת: חסר מפתח AI. ב-Supabase: Edge Functions ← Secrets ← ANTHROPIC_API_KEY."
+              : code === "network_error"
+                ? "לא הצלחתי להתחבר לעוזר כרגע. בדוק את החיבור ונסה שוב."
+                : "הייתה תקלה בשרת של העוזר. נסה שוב בעוד רגע.";
         return { status: "error", text, actions: this.actions };
       }
 

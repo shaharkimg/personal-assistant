@@ -6,7 +6,7 @@ import * as Sharing from "expo-sharing";
 import { getPermissionsAsync as contactsPerm } from "expo-contacts";
 import { getProfile, updateProfile, exportAllData, deleteAccount } from "@/data/profile";
 import type { Proactivity, Profile } from "@/domain/types";
-import { supabase } from "@/lib/supabase";
+import { FunctionError, supabase } from "@/lib/supabase";
 import { calendarService } from "@/services/calendar/CalendarService";
 import { contactsService } from "@/services/contacts/ContactsService";
 import { hasNotificationPermission, requestNotificationPermission } from "@/services/notifications/NotificationService";
@@ -14,6 +14,7 @@ import { syncNotifications } from "@/services/notifications/sync";
 import { canUseBiometrics, isAppLockEnabled, setAppLockEnabled } from "@/services/security/appLock";
 import { Button, Card, Chip, Row, Screen, SectionHeader, T } from "@/components/ui";
 import { invalidateAll, qk } from "@/state/queries";
+import { mailService } from "@/services/mail/MailService";
 import { space } from "@/theme/tokens";
 
 const LEVELS: { key: Proactivity; label: string; body: string }[] = [
@@ -50,6 +51,32 @@ function PermissionRow({ title, subtitle, check, request }: { title: string; sub
           />
         )
       }
+    />
+  );
+}
+
+const MAIL_ERRORS: Record<string, string> = {
+  mail_forbidden: "ה-Gmail שמחובר בשרת שייך לחשבון אחר",
+  mail_auth_failed: "גוגל דחה את סיסמת האפליקציה — צור חדשה",
+  mail_unreachable: "אין חיבור ל-Gmail כרגע",
+};
+
+function GmailRow() {
+  const status = useQuery({ queryKey: ["mail-status"], queryFn: () => mailService.status(), retry: false, staleTime: 60_000 });
+  const code = status.error instanceof FunctionError ? status.error.code : null;
+  const subtitle = status.isLoading
+    ? "בודק…"
+    : status.data?.connected
+      ? `מחובר: ${status.data.address}`
+      : status.data
+        ? "לא מחובר (ראה הוראות ב-README)"
+        : (code && MAIL_ERRORS[code]) ?? "הבדיקה נכשלה";
+  return (
+    <Row
+      title="Gmail"
+      subtitle={subtitle}
+      icon={status.data?.connected ? "checkmark-circle-outline" : "mail-outline"}
+      right={<Button compact variant="ghost" title="בדוק" loading={status.isFetching} onPress={() => void status.refetch()} />}
     />
   );
 }
@@ -130,6 +157,11 @@ export default function Settings() {
         <PermissionRow title="יומן" subtitle="קריאה וכתיבה של אירועים" check={() => calendarService.hasAccess()} request={() => calendarService.requestAccess()} />
         <PermissionRow title="אנשי קשר" subtitle="חיפוש מקומי בלבד" check={async () => (await contactsPerm()).granted} request={() => contactsService.requestAccess()} />
         <PermissionRow title="התראות" subtitle="תזכורות ועדכונים" check={hasNotificationPermission} request={requestNotificationPermission} />
+      </Card>
+
+      <SectionHeader title="חשבונות מחוברים" />
+      <Card style={{ paddingVertical: space.xs }}>
+        <GmailRow />
       </Card>
       <T variant="caption" tone="tertiary" style={{ marginTop: space.xs }}>
         מיקרופון ומצלמה מתבקשים רק ברגע השימוש הראשון.

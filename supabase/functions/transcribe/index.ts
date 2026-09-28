@@ -7,8 +7,11 @@ import { getTranscriptionProvider } from "../_shared/transcription/index.ts";
 const MAX_BYTES = 20 * 1024 * 1024;
 
 Deno.serve(handler(async (req) => {
+  console.log("transcribe: starting");
   const { userId } = await requireUser(req);
-  const form = await req.formData().catch(() => {
+  console.log("transcribe: user auth ok");
+  const form = await req.formData().catch((e) => {
+    console.error("transcribe: formData error", e);
     throw new HttpError(400, "expected multipart/form-data", "bad_request");
   });
   const audio = form.get("audio");
@@ -18,11 +21,21 @@ Deno.serve(handler(async (req) => {
     throw new HttpError(415, "unsupported audio type", "unsupported");
   }
   const language = (form.get("language") as string | null) ?? undefined;
+  console.log("transcribe: audio ok, size", audio.size, "type", audio.type, "language", language);
 
   await startMeteredRequest(userId);
-  const result = await getTranscriptionProvider().transcribe(audio, {
-    language: language?.slice(0, 5),
-    fileName: audio.name || "recording.m4a",
-  });
-  return json(req, result);
+  console.log("transcribe: metered request ok");
+  try {
+    const provider = getTranscriptionProvider();
+    console.log("transcribe: provider ready", provider.name);
+    const result = await provider.transcribe(audio, {
+      language: language?.slice(0, 5),
+      fileName: audio.name || "recording.m4a",
+    });
+    console.log("transcribe: success");
+    return json(req, result);
+  } catch (e) {
+    console.error("transcribe: provider error", e);
+    throw e;
+  }
 }));

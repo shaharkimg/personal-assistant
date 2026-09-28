@@ -9,6 +9,7 @@ import { heuristicClassify } from "@/domain/inbox";
 import { Composer } from "@/components/assistant/Composer";
 import { Button, T } from "@/components/ui";
 import { invalidateAll } from "@/state/queries";
+import { useChat } from "@/state/chat";
 import { ingestFiles, type LocalFile } from "@/services/documents/DocumentService";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { space, useTheme } from "@/theme/tokens";
@@ -21,12 +22,21 @@ import { space, useTheme } from "@/theme/tokens";
 export default function Capture() {
   const c = useTheme();
   const router = useRouter();
-  const { voice: autoVoice } = useLocalSearchParams<{ voice?: string }>();
+  const params = useLocalSearchParams<{ voice?: string; meeting?: string }>();
+  // Meeting mode: dictate what happened, then hand off to the chat so the summary can be confirmed.
+  const meeting = params.meeting !== undefined ? (params.meeting === "1" ? "" : params.meeting) : null;
+  const autoVoice = meeting !== null ? "1" : params.voice;
+  const setOutbox = useChat((s) => s.setOutbox);
   const [status, setStatus] = useState<"idle" | "working" | "done" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const capture = async (text: string, files: LocalFile[] = []) => {
+    if (meeting !== null) {
+      setOutbox({ text: `סיכום פגישה${meeting ? ` "${meeting}"` : ""}: ${text}`, files });
+      router.replace("/chat");
+      return;
+    }
     setStatus("working");
     try {
       if (files.length) {
@@ -66,7 +76,10 @@ export default function Capture() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg, padding: space.lg, gap: space.lg, paddingTop: space.xl }}>
-      <T variant="title">לכידה מהירה</T>
+      <T variant="title">{meeting !== null ? "סיכום פגישה" : "לכידה מהירה"}</T>
+      {meeting !== null ? (
+        <T tone="secondary">{`${meeting ? `"${meeting}" — ` : ""}ספר מה סוכם, מה אתה צריך לעשות ומה אחרים הבטיחו.`}</T>
+      ) : null}
       {status === "idle" ? (
         autoVoice === "1" && voice.state !== "idle" ? (
           <View style={{ gap: space.md }}>
@@ -74,6 +87,7 @@ export default function Capture() {
               {voice.state === "recording" ? `מקשיב… ${voice.seconds}ש׳` : voice.state === "transcribing" ? "מתמלל…" : voice.error}
             </T>
             {voice.state === "recording" ? <Button title="סיום" icon="stop" onPress={() => void voice.stop()} /> : null}
+            {voice.state === "error" ? <Composer autoFocus onSend={(t, f) => void capture(t, f)} placeholder="אפשר גם לכתוב" /> : null}
           </View>
         ) : (
           <Composer autoFocus onSend={(t, f) => void capture(t, f)} placeholder='למשל: "מחר להתקשר לעירייה"' />

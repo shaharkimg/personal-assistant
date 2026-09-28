@@ -1,3 +1,4 @@
+import { HttpError } from "../http.ts";
 import OpenAI, { toFile } from "npm:openai@7";
 import type { TranscriptionProvider } from "../ai/types.ts";
 
@@ -17,18 +18,25 @@ class OpenAICompatibleTranscription implements TranscriptionProvider {
 
   async transcribe(audio: Blob, opts: { language?: string; fileName: string }) {
     const file = await toFile(audio, opts.fileName);
-    const res = await this.client.audio.transcriptions.create({
-      file,
-      model: this.model,
-      ...(opts.language ? { language: opts.language } : {}),
-    });
-    return { text: res.text.trim(), language: opts.language };
+    console.log(`transcribe: calling ${this.name}, model=${this.model}, language=${opts.language}, file=${opts.fileName}, size=${file.size}`);
+    try {
+      const res = await this.client.audio.transcriptions.create({
+        file,
+        model: this.model,
+        ...(opts.language ? { language: opts.language } : {}),
+      });
+      console.log("transcribe: response", { text: res.text?.slice(0, 50), language: opts.language });
+      return { text: res.text.trim(), language: opts.language };
+    } catch (e) {
+      console.error("transcribe: API error", { error: e, message: (e as any)?.message, status: (e as any)?.status });
+      throw e;
+    }
   }
 }
 
 export function getTranscriptionProvider(): TranscriptionProvider {
   const key = Deno.env.get("TRANSCRIPTION_API_KEY") ?? Deno.env.get("OPENAI_API_KEY");
-  if (!key) throw new Error("missing secret TRANSCRIPTION_API_KEY");
+  if (!key) throw new HttpError(503, "missing secret TRANSCRIPTION_API_KEY", "transcription_not_configured");
   return new OpenAICompatibleTranscription(
     key,
     Deno.env.get("TRANSCRIPTION_MODEL") ?? "gpt-4o-transcribe",

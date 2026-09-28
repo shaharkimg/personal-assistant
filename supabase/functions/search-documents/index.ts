@@ -15,7 +15,13 @@ Deno.serve(handler(async (req) => {
   const { query, documentIds, limit } = await parseBody(req, Body);
 
   const embedder = getEmbeddingProvider();
-  const [embedding] = embedder ? await embedder.embed([query], "query") : [null];
+  // Falls back to keyword search when embeddings are unavailable.
+  const [embedding] = embedder
+    ? await embedder.embed([query], "query").catch((e) => {
+      console.error("query embedding failed; keyword search only", e);
+      return [null];
+    })
+    : [null];
 
   // RPC is SECURITY INVOKER: RLS restricts matches to the caller's chunks.
   const { data, error } = await db.rpc("match_document_chunks", {
