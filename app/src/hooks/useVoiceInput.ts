@@ -43,8 +43,10 @@ export function useVoiceInput(onTranscript: (text: string) => void) {
       else setError("לא זוהה דיבור");
     } catch (e) {
       setState("error");
+      const err = e as { code?: string; message?: string };
+      console.log("Voice transcription error:", err);
       setError(
-        (e as { code?: string }).code === "transcription_not_configured"
+        err.code === "transcription_not_configured"
           ? "זיהוי דיבור לא מוגדר בשרת (חסר מפתח OpenAI). אפשר להקליד."
           : "התמלול נכשל. נסה שוב או הקלד.",
       );
